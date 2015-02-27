@@ -1,0 +1,21 @@
+
+An overview of methods
+http://perso.uclouvain.be/chia-tche.chang/resources/CGM11_paper.pdf
+
+PCA Info
+https://hewjunwei.wordpress.com/2013/01/26/obb-generation-via-principal-component-analysis/
+http://stackoverflow.com/questions/17942902/bounding-box-with-pca/18146118#18146118
+http://www.losart3d.com/?p=511
+
+General Info
+http://mathworld.wolfram.com/SpherePointPicking.html
+http://www.cs.tau.ac.il/~dcor/Graphics/cg-slides/3d_geometry_lesson2.pdf
+http://renderdan.blogspot.com/2006/05/rotation-matrix-from-axis-vectors.html
+
+Oroukes Method
+http://cs.smith.edu/~orourke/Papers/MinVolBox.pdf
+
+
+http://www.losart3d.com/?p=511
+
+
