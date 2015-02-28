@@ -20,9 +20,13 @@ import numpy as np
 
 def bbox_orient(bme_verts, mx):
     '''
-    takes a lsit of BMverts
+    takes a lsit of BMverts ora  list of vectors
     '''
-    verts = [mx * v.co for v in bme_verts]
+    if hasattr(bme_verts[0], 'co'):
+        verts = [mx * v.co for v in bme_verts]
+    else:
+        verts = [mx * v for v in bme_verts]
+        
     xs = [v[0] for v in verts]
     ys = [v[1] for v in verts]
     zs = [v[2] for v in verts]
@@ -128,7 +132,7 @@ def main(context, rand_sample, spin_res, make_sphere):
     
     bme.free() 
 
-def main_SVD(context, down_sample, method, spin_res):
+def main_SVD(context, down_sample, method, spin_res, make_box):
     start = time.time()
     
     world_mx = context.object.matrix_world
@@ -156,51 +160,85 @@ def main_SVD(context, down_sample, method, spin_res):
     M0[:ndims, ndims] = t0
     v0 += t0.reshape(ndims, 1)
     
-    #A = np.zeros(shape = [3,len(vert_data)])
-    #for i in range(0,len(vert_data)):
-    #        V1 = vert_data[i]
-    #        A[0][i], A[1][i], A[2][i] = V1[0], V1[1], V1[2]
-    
-    
     U, s, V = np.linalg.svd(v0, full_matrices=True)
     
-    print(V) #these should be eigenvectors which are the principle axes?
-    
-    rmx = Matrix.Identity(4)  #may need to transpose this stuff
+    #make a rotation matrix from eigenvectors (easy)
+    rmx = Matrix.Identity(4)
     rmx[0][0], rmx[0][1], rmx[0][2] = V[0][0], V[0][1], V[0][2]
     rmx[1][0], rmx[1][1], rmx[1][2] = V[1][0], V[1][1], V[1][2]
     rmx[2][0], rmx[2][1], rmx[2][2] = V[2][0], V[2][1], V[2][2]
     
     
-    min_box = bbox_orient(hull_verts, rmx)
+    min_box = bbox_orient(vert_data, rmx)
     min_vol = bbox_vol(min_box)
     min_angle = 0
     min_mx = rmx
+      
+    #these are our PCA directions
+    X = Vector(( V[0][0], V[0][1], V[0][2]))
+    Y = Vector(( V[1][0], V[1][1], V[1][2]))
+    Z = Vector(( V[2][0], V[2][1], V[2][2]))
     
-    if method == 1:  #PCAmax, spin around the biggest PCA component, good for linear objects
-        axis = Vector((V[0][0], V[0][1], V[0][2]))
-    elif method == 2:
-        axis = Vector((V[1][0], V[1][1], V[1][2]))
-    else:   
-        axis = Vector((V[2][0], V[2][1], V[2][2]))
-    
-    for n in range(0, spin_res):
-        print('did spin it')
-        angle = math.pi/2 * n/spin_res
-        rot_mx = Matrix.Rotation(angle,4,axis)
+    for n in range(0, 2 * spin_res):
+        angle = math.pi * n/(2 * spin_res)
+        
+        rmx = Matrix.Identity(4)
             
-        box = bbox_orient(hull_verts, rot_mx)
+        if method == 1:  #keep x axis and rotate around it
+            rmx[0][0], rmx[0][1], rmx[0][2] = X[0], X[1], X[2]
+            
+            y = math.cos(angle) * Y + math.sin(angle) * Z
+            y.normalize()
+            rmx[1][0], rmx[1][1], rmx[1][2] = y[0], y[1], y[2]
+            
+            z = -math.sin(angle) * Y + math.cos(angle) * Z
+            z.normalize()
+            rmx[2][0], rmx[2][1], rmx[2][2] = z[0], z[1], z[2]
+            
+        elif method == 2: #keep y axis and rotate around it
+            x = math.cos(angle) * X - math.sin(angle) * Z
+            x.normalize()
+            rmx[0][0], rmx[0][1], rmx[0][2] = x[0], x[1], x[2]
+            #keep y
+            rmx[1][0], rmx[1][1], rmx[1][2] = Y[0], Y[1], Y[2]
+        
+            z = math.sin(angle) * X + math.cos(angle) * Z
+            z.normalize()
+            rmx[2][0], rmx[2][1], rmx[2][2] = z[0], z[1], z[2]
+            
+        else:
+            x = math.cos(angle) * X + math.sin(angle) * Y
+            x.normalize()
+            rmx[0][0], rmx[0][1], rmx[0][2] = x[0], x[1], x[2]
+            
+            y = -math.sin(angle) * X + math.cos(angle) * Y
+            y.normalize()
+            rmx[1][0], rmx[1][1], rmx[1][2] = y[0], y[1], y[2]
+            
+            #Keep Z
+            rmx[2][0], rmx[2][1], rmx[2][2] = Z[0], Z[1], Z[2]
+
+        box = bbox_orient(vert_data, rmx)
         test_V = bbox_vol(box)
-            
         if test_V < min_vol:
-            print('found better volume with PCA')
             min_angle = angle
             min_box = box
-            min_mx = rot_mx
+            min_mx = rmx
+            min_vol = test_V
+            
+        if make_box:
+            box_verts = box_cords(box)
+            bpy.ops.mesh.primitive_cube_add()
+        
+            context.object.matrix_world =rmx.inverted() * world_mx
+            context.object.draw_type = 'BOUNDS'
+            for i, v in enumerate(box_verts):
+                context.object.data.vertices[i].co = v    
+        
     
     elapsed_time = time.time() - start
     
-    print('found bbox of volume %f in %f seconds with SVD' % (min_vol, elapsed_time))
+    print('found bbox of volume %f in %f seconds with SVD followed by rotating calipers' % (min_vol, elapsed_time))
     
     box_verts = box_cords(min_box)
     bpy.ops.mesh.primitive_cube_add()
@@ -222,6 +260,12 @@ class ObjectMinBoundBox(bpy.types.Operator):
             description = 'add a sphere to the scene showing random direction sample',
             default=False,
             )
+    
+    make_box = BoolProperty(
+            name="Visualize Boxes",
+            description = 'add a cube for all bounding boxes tried.  VERY MESS!',
+            default=False,
+            )
     area_sample = IntProperty(
             name="Direction Samples",
             description = 'number of random directions to test calipers in',
@@ -229,12 +273,12 @@ class ObjectMinBoundBox(bpy.types.Operator):
     angular_sample = IntProperty(
             name="Direction samples",
             description = 'angular step to rotate calipers 90 = 1 degree steps, 180 = 1/2 degree steps',
-            default = 90)
+            default = 10)
     
     method = IntProperty(
             name="Method",
             description = 'dummy prop.  0 is brute force, 1 is PCAmax, 2 is PCAmin',
-            default = 0)
+            default = 1)
     
     @classmethod
     def poll(cls, context):
@@ -249,6 +293,7 @@ class ObjectMinBoundBox(bpy.types.Operator):
         layout = self.layout
         row =layout.row()
         row.prop(self, "sample_vis")
+        row.prop(self, "make_box")
         
         row =layout.row()
         row.prop(self, "area_sample")
@@ -256,8 +301,8 @@ class ObjectMinBoundBox(bpy.types.Operator):
         row =layout.row()
         row.prop(self, "angular_sample")
         
-        #row =layout.row()
-        #row.prop(self, "method")
+        row =layout.row()
+        row.prop(self, "method")
         pass
     
     
@@ -266,7 +311,7 @@ class ObjectMinBoundBox(bpy.types.Operator):
             main(context, self.area_sample, self.angular_sample, self.sample_vis)
         
         else:
-            main_SVD(context, 1, self.method, self.angular_sample)
+            main_SVD(context, 1, self.method, self.angular_sample, self.make_box)
         return {'FINISHED'}
 
 
