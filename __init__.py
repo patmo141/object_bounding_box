@@ -15,7 +15,7 @@ import math
 import random
 import time
 from mathutils import Vector, Matrix
-from bpy.props import BoolProperty, FloatProperty, IntProperty
+from bpy.props import BoolProperty, FloatProperty, IntProperty, EnumProperty
 import numpy as np
 
 def bbox_orient(bme_verts, mx):
@@ -62,6 +62,16 @@ def main(context, rand_sample, spin_res, make_sphere):
     #spin_res = 180   #180 steps is 0.5 degrees
     
     world_mx = context.object.matrix_world
+    scale = world_mx.to_scale()
+    trans = world_mx.to_translation()
+    
+    tr_mx = Matrix.Identity(4)
+    sc_mx = Matrix.Identity(4)
+    
+    tr_mx[0][3], tr_mx[1][3], tr_mx[2][3] = trans[0], trans[1], trans[2]
+    sc_mx[0][0], sc_mx[1][1], sc_mx[2][2] = scale[0], scale[1], scale[2]
+    r_mx = world_mx.to_quaternion().to_matrix().to_4x4()
+    
     me = context.object.data
     bme = bmesh.new()
     bme.from_mesh(me)
@@ -113,7 +123,9 @@ def main(context, rand_sample, spin_res, make_sphere):
     print("final volume %f" % bbox_vol(min_box))         
     box_verts = box_cords(min_box)
     bpy.ops.mesh.primitive_cube_add()
-    context.object.matrix_world = min_mx.inverted()*world_mx
+    
+    fmx = tr_mx * r_mx * min_mx.inverted() * sc_mx
+    context.object.matrix_world = fmx
     context.object.draw_type = 'BOUNDS'
     for i, v in enumerate(box_verts):
         context.object.data.vertices[i].co = v
@@ -136,6 +148,16 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
     start = time.time()
     
     world_mx = context.object.matrix_world
+    scale = world_mx.to_scale()
+    trans = world_mx.to_translation()
+    
+    tr_mx = Matrix.Identity(4)
+    sc_mx = Matrix.Identity(4)
+    
+    tr_mx[0][3], tr_mx[1][3], tr_mx[2][3] = trans[0], trans[1], trans[2]
+    sc_mx[0][0], sc_mx[1][1], sc_mx[2][2] = scale[0], scale[1], scale[2]
+    r_mx = world_mx.to_quaternion().to_matrix().to_4x4()
+    
     me = context.object.data
     bme = bmesh.new()
     bme.from_mesh(me)
@@ -184,7 +206,7 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
         
         rmx = Matrix.Identity(4)
             
-        if method == 1:  #keep x axis and rotate around it
+        if method == 'pca_x':  #keep x axis and rotate around it
             rmx[0][0], rmx[0][1], rmx[0][2] = X[0], X[1], X[2]
             
             y = math.cos(angle) * Y + math.sin(angle) * Z
@@ -195,7 +217,7 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
             z.normalize()
             rmx[2][0], rmx[2][1], rmx[2][2] = z[0], z[1], z[2]
             
-        elif method == 2: #keep y axis and rotate around it
+        elif method == 'pca_y': #keep y axis and rotate around it
             x = math.cos(angle) * X - math.sin(angle) * Z
             x.normalize()
             rmx[0][0], rmx[0][1], rmx[0][2] = x[0], x[1], x[2]
@@ -230,7 +252,7 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
             box_verts = box_cords(box)
             bpy.ops.mesh.primitive_cube_add()
         
-            context.object.matrix_world =rmx.inverted() * world_mx
+            context.object.matrix_world =rmx.transposed().inverted() * world_mx
             context.object.draw_type = 'BOUNDS'
             for i, v in enumerate(box_verts):
                 context.object.data.vertices[i].co = v    
@@ -242,7 +264,10 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
     
     box_verts = box_cords(min_box)
     bpy.ops.mesh.primitive_cube_add()
-    context.object.matrix_world = min_mx.inverted() * world_mx
+    #FinalMatrix = TranslationMatrix * RotationMatrix * ScaleMatrix
+    fmx = tr_mx * r_mx * min_mx.inverted() * sc_mx
+    
+    context.object.matrix_world =  fmx
     context.object.draw_type = 'BOUNDS'
     for i, v in enumerate(box_verts):
         context.object.data.vertices[i].co = v
@@ -273,13 +298,20 @@ class ObjectMinBoundBox(bpy.types.Operator):
     angular_sample = IntProperty(
             name="Direction samples",
             description = 'angular step to rotate calipers 90 = 1 degree steps, 180 = 1/2 degree steps',
-            default = 10)
+            default = 50)
     
-    method = IntProperty(
-            name="Method",
-            description = 'dummy prop.  0 is brute force, 1 is PCAmax, 2 is PCAmin',
-            default = 1)
-    
+    #(identifier, name, description, icon, number)
+    method_enum = [('brute_force', "BRUTE FORCE", 'Checks a bunch of random boxes'),
+                   ('pca_y', 'PCAY','Good for linear objects'),
+                   ('pca_x', 'PCAX', 'Good for flat objects'),
+                   ('pca_z', 'PCAZ', 'Good for some things')]
+        
+    method = bpy.props.EnumProperty(
+        name="Method", 
+        description="Min BBox method to use", 
+        items=method_enum, 
+        default='brute_force',
+        options={'ANIMATABLE'})
     @classmethod
     def poll(cls, context):
         return context.active_object is not None and context.active_object.type == 'MESH'
@@ -307,7 +339,7 @@ class ObjectMinBoundBox(bpy.types.Operator):
     
     
     def execute(self, context):
-        if self.method == 0:
+        if self.method == 'brute_force':
             main(context, self.area_sample, self.angular_sample, self.sample_vis)
         
         else:
