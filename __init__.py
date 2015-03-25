@@ -4,7 +4,7 @@ bl_info = {
     "version": (0, 1),
     "blender": (2, 7, 3),
     "location": "View3D > Add > Mesh > New Object",
-    "description": "Adds new cube which is minumum bounding box",
+    "description": "Adds new cube which is minumum bounding box!",
     "warning": "",
     "wiki_url": "",
     "category": "Add Mesh"}
