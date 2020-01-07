@@ -2,7 +2,7 @@ bl_info = {
     "name": "Object Bounding Box",
     "author": "Patrick R. Moore",
     "version": (0, 1),
-    "blender": (2, 7, 3),
+    "blender": (2, 8, 1),
     "location": "View3D > Add > Mesh > New Object",
     "description": "Adds new cube which is minumum bounding box!",
     "warning": "",
@@ -23,9 +23,9 @@ def bbox_orient(bme_verts, mx):
     takes a lsit of BMverts ora  list of vectors
     '''
     if hasattr(bme_verts[0], 'co'):
-        verts = [mx * v.co for v in bme_verts]
+        verts = [mx @ v.co for v in bme_verts]
     else:
-        verts = [mx * v for v in bme_verts]
+        verts = [mx @ v for v in bme_verts]
         
     xs = [v[0] for v in verts]
     ys = [v[1] for v in verts]
@@ -124,9 +124,9 @@ def main(context, rand_sample, spin_res, make_sphere):
     box_verts = box_cords(min_box)
     bpy.ops.mesh.primitive_cube_add()
     
-    fmx = tr_mx * r_mx * min_mx.inverted() * sc_mx
+    fmx = tr_mx @ r_mx @ min_mx.inverted() @ sc_mx
     context.object.matrix_world = fmx
-    context.object.draw_type = 'BOUNDS'
+    context.object.display_type = 'BOUNDS'
     for i, v in enumerate(box_verts):
         context.object.data.vertices[i].co = v
     
@@ -253,7 +253,7 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
             bpy.ops.mesh.primitive_cube_add()
         
             context.object.matrix_world =rmx.transposed().inverted() * world_mx
-            context.object.draw_type = 'BOUNDS'
+            context.object.display_type = 'BOUNDS'
             for i, v in enumerate(box_verts):
                 context.object.data.vertices[i].co = v    
         
@@ -265,10 +265,10 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
     box_verts = box_cords(min_box)
     bpy.ops.mesh.primitive_cube_add()
     #FinalMatrix = TranslationMatrix * RotationMatrix * ScaleMatrix
-    fmx = tr_mx * r_mx * min_mx.inverted() * sc_mx
+    fmx = tr_mx @ r_mx @ min_mx.inverted() @ sc_mx
     
     context.object.matrix_world =  fmx
-    context.object.draw_type = 'BOUNDS'
+    context.object.display_type = 'BOUNDS'
     for i, v in enumerate(box_verts):
         context.object.data.vertices[i].co = v
     
