@@ -2,7 +2,7 @@ bl_info = {
     "name": "Object Bounding Box",
     "author": "Patrick R. Moore",
     "version": (0, 2),
-    "blender": (2, 8, 2),
+    "blender": (2, 80, 2),
     "location": "View3D > Add > Mesh > New Object",
     "description": "Adds new cube which is minumum bounding box!",
     "warning": "",
@@ -93,6 +93,8 @@ def main(context, rand_sample, spin_res, make_sphere):
     min_angle = 0
     axes = []
     for i in range(0,rand_sample):
+        
+        #TODO citation for randomly picking on sphere code
         u = random.random()
         v = random.random()
         
@@ -274,9 +276,9 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
     
     bme.free()     
  
-class ObjectMinBoundBox(bpy.types.Operator):
+class OBJECT_OT_min_bound_boux(bpy.types.Operator):
     """Find approximate minimum bounding box of object"""
-    bl_idname = "object.min_bounds"
+    bl_idname = "object.min_bound_box"
     bl_label = "Min Bounding Box"
 
     # generic transform props
@@ -292,11 +294,11 @@ class ObjectMinBoundBox(bpy.types.Operator):
             default=False,
             )
     area_sample : IntProperty(
-            name="Direction Samples",
+            name="Area Samples",
             description = 'number of random directions to test calipers in',
             default = 200)
     angular_sample : IntProperty(
-            name="Direction samples",
+            name="Angular Sample",
             description = 'angular step to rotate calipers 90 = 1 degree steps, 180 = 1/2 degree steps',
             default = 50)
     
