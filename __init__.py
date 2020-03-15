@@ -1,8 +1,8 @@
 bl_info = {
     "name": "Object Bounding Box",
     "author": "Patrick R. Moore",
-    "version": (0, 1),
-    "blender": (2, 7, 3),
+    "version": (0, 2),
+    "blender": (2, 8, 2),
     "location": "View3D > Add > Mesh > New Object",
     "description": "Adds new cube which is minumum bounding box!",
     "warning": "",
@@ -23,9 +23,9 @@ def bbox_orient(bme_verts, mx):
     takes a lsit of BMverts ora  list of vectors
     '''
     if hasattr(bme_verts[0], 'co'):
-        verts = [mx * v.co for v in bme_verts]
+        verts = [mx @ v.co for v in bme_verts]
     else:
-        verts = [mx * v for v in bme_verts]
+        verts = [mx @ v for v in bme_verts]
         
     xs = [v[0] for v in verts]
     ys = [v[1] for v in verts]
@@ -124,9 +124,9 @@ def main(context, rand_sample, spin_res, make_sphere):
     box_verts = box_cords(min_box)
     bpy.ops.mesh.primitive_cube_add()
     
-    fmx = tr_mx * r_mx * min_mx.inverted() * sc_mx
+    fmx = tr_mx @ r_mx @ min_mx.inverted() @ sc_mx
     context.object.matrix_world = fmx
-    context.object.draw_type = 'BOUNDS'
+    context.object.display_type = 'BOUNDS'
     for i, v in enumerate(box_verts):
         context.object.data.vertices[i].co = v
     
@@ -139,7 +139,7 @@ def main(context, rand_sample, spin_res, make_sphere):
         sphere_me = bpy.data.meshes.new('Bound Samples')
         dest_ob = bpy.data.objects.new('Bound Samples',sphere_me)
         sample_sphere.to_mesh(sphere_me)
-        context.scene.objects.link(dest_ob)
+        context.collection.objects.link(dest_ob)
         sample_sphere.free()
     
     bme.free() 
@@ -252,8 +252,8 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
             box_verts = box_cords(box)
             bpy.ops.mesh.primitive_cube_add()
         
-            context.object.matrix_world =rmx.transposed().inverted() * world_mx
-            context.object.draw_type = 'BOUNDS'
+            context.object.matrix_world =rmx.transposed().inverted() @ world_mx
+            context.object.display_type = 'BOUNDS'
             for i, v in enumerate(box_verts):
                 context.object.data.vertices[i].co = v    
         
@@ -265,37 +265,37 @@ def main_SVD(context, down_sample, method, spin_res, make_box):
     box_verts = box_cords(min_box)
     bpy.ops.mesh.primitive_cube_add()
     #FinalMatrix = TranslationMatrix * RotationMatrix * ScaleMatrix
-    fmx = tr_mx * r_mx * min_mx.inverted() * sc_mx
+    fmx = tr_mx @ r_mx @ min_mx.inverted() @ sc_mx
     
     context.object.matrix_world =  fmx
-    context.object.draw_type = 'BOUNDS'
+    context.object.display_type = 'BOUNDS'
     for i, v in enumerate(box_verts):
         context.object.data.vertices[i].co = v
     
     bme.free()     
-    
+ 
 class ObjectMinBoundBox(bpy.types.Operator):
     """Find approximate minimum bounding box of object"""
     bl_idname = "object.min_bounds"
     bl_label = "Min Bounding Box"
 
     # generic transform props
-    sample_vis = BoolProperty(
+    sample_vis : BoolProperty(
             name="Visualize Sample",
             description = 'add a sphere to the scene showing random direction sample',
             default=False,
             )
     
-    make_box = BoolProperty(
+    make_box : BoolProperty(
             name="Visualize Boxes",
             description = 'add a cube for all bounding boxes tried.  VERY MESS!',
             default=False,
             )
-    area_sample = IntProperty(
+    area_sample : IntProperty(
             name="Direction Samples",
             description = 'number of random directions to test calipers in',
             default = 200)
-    angular_sample = IntProperty(
+    angular_sample : IntProperty(
             name="Direction samples",
             description = 'angular step to rotate calipers 90 = 1 degree steps, 180 = 1/2 degree steps',
             default = 50)
@@ -306,7 +306,7 @@ class ObjectMinBoundBox(bpy.types.Operator):
                    ('pca_x', 'PCAX', 'Good for flat objects'),
                    ('pca_z', 'PCAZ', 'Good for some things')]
         
-    method = bpy.props.EnumProperty(
+    method : bpy.props.EnumProperty(
         name="Method", 
         description="Min BBox method to use", 
         items=method_enum, 
