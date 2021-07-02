@@ -2,7 +2,7 @@ bl_info = {
     "name": "Object Bounding Box",
     "author": "Patrick R. Moore",
     "version": (0, 1),
-    "blender": (2, 80, 1),
+    "blender": (2, 80, 3),
     "location": "View3D > Add > Mesh > New Object",
     "description": "Adds new cube which is minumum bounding box!",
     "warning": "",
@@ -280,22 +280,22 @@ class ObjectMinBoundBox(bpy.types.Operator):
     bl_label = "Min Bounding Box"
 
     # generic transform props
-    sample_vis = BoolProperty(
+    sample_vis: BoolProperty(
             name="Visualize Sample",
             description = 'add a sphere to the scene showing random direction sample',
             default=False,
             )
     
-    make_box = BoolProperty(
+    make_box: BoolProperty(
             name="Visualize Boxes",
             description = 'add a cube for all bounding boxes tried.  VERY MESS!',
             default=False,
             )
-    area_sample = IntProperty(
+    area_sample: IntProperty(
             name="Direction Samples",
             description = 'number of random directions to test calipers in',
             default = 200)
-    angular_sample = IntProperty(
+    angular_sample: IntProperty(
             name="Direction samples",
             description = 'angular step to rotate calipers 90 = 1 degree steps, 180 = 1/2 degree steps',
             default = 50)
@@ -306,7 +306,7 @@ class ObjectMinBoundBox(bpy.types.Operator):
                    ('pca_x', 'PCAX', 'Good for flat objects'),
                    ('pca_z', 'PCAZ', 'Good for some things')]
         
-    method = bpy.props.EnumProperty(
+    method: bpy.props.EnumProperty(
         name="Method", 
         description="Min BBox method to use", 
         items=method_enum, 
